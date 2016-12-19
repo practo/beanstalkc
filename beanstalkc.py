@@ -40,6 +40,9 @@ class SocketError(BeanstalkcException):
     @staticmethod
     def wrap(wrapped_function, *args, **kwargs):
         try:
+            # print ("kwargs",**kwargs)
+            # print ("args",*args)
+            # print ("wrapped_function",wrapped_function)
             return wrapped_function(*args, **kwargs)
         except socket.error:
             err = sys.exc_info()[1]
@@ -92,7 +95,9 @@ class Connection(object):
         self.connect()
 
     def _interact(self, command, expected_ok, expected_err=[]):
-        SocketError.wrap(self._socket.sendall, command)
+        # print ("command --->",command)
+        # print ("over")
+        SocketError.wrap(self._socket.sendall, command.encode('utf-8'))
         status, results = self._read_response()
         if status in expected_ok:
             return results
@@ -130,7 +135,7 @@ class Connection(object):
 
     def _interact_peek(self, command):
         try:
-            return self._interact_job(command, ['FOUND'], ['NOT_FOUND'], False)
+            return self._interact_job(command, ['FOUND'.encode('utf-8')], ['NOT_FOUND'.encode('utf-8')], False)
         except CommandFailed:
             return None
 
@@ -141,8 +146,8 @@ class Connection(object):
         assert isinstance(body, str), 'Job body must be a str instance'
         jid = self._interact_value('put %d %d %d %d\r\n%s\r\n' % (
                                        priority, delay, ttr, len(body), body),
-                                   ['INSERTED'],
-                                   ['JOB_TOO_BIG', 'BURIED', 'DRAINING'])
+                                   ['INSERTED'.encode('utf-8')],
+                                   ['JOB_TOO_BIG'.encode('utf-8'), 'BURIED'.encode('utf-8'), 'DRAINING'.encode('utf-8')])
         return int(jid)
 
     def reserve(self, timeout=None):
@@ -154,8 +159,8 @@ class Connection(object):
             command = 'reserve\r\n'
         try:
             return self._interact_job(command,
-                                      ['RESERVED'],
-                                      ['DEADLINE_SOON', 'TIMED_OUT'])
+                                      ['RESERVED'.encode('utf-8')],
+                                      ['DEADLINE_SOON'.encode('utf-8'), 'TIMED_OUT'.encode('utf-8')])
         except CommandFailed:
             exc = sys.exc_info()[1]
             _, status, results = exc.args
@@ -166,11 +171,11 @@ class Connection(object):
 
     def kick(self, bound=1):
         """Kick at most bound jobs into the ready queue."""
-        return int(self._interact_value('kick %d\r\n' % bound, ['KICKED']))
+        return int(self._interact_value('kick %d\r\n' % bound, ['KICKED'.encode('utf-8')]))
 
     def kick_job(self, jid):
         """Kick a specific job into the ready queue."""
-        self._interact('kick-job %d\r\n' % jid, ['KICKED'], ['NOT_FOUND'])
+        self._interact('kick-job %d\r\n' % jid, ['KICKED'.encode('utf-8')], ['NOT_FOUND'.encode('utf-8')])
 
     def peek(self, jid):
         """Peek at a job. Returns a Job, or None."""
@@ -190,78 +195,78 @@ class Connection(object):
 
     def tubes(self):
         """Return a list of all existing tubes."""
-        return self._interact_yaml('list-tubes\r\n', ['OK'])
+        return self._interact_yaml('list-tubes\r\n', ['OK'.encode('utf-8')])
 
     def using(self):
         """Return the tube currently being used."""
-        return self._interact_value('list-tube-used\r\n', ['USING'])
+        return self._interact_value('list-tube-used\r\n', ['USING'.encode('utf-8')])
 
     def use(self, name):
         """Use a given tube."""
-        return self._interact_value('use %s\r\n' % name, ['USING'])
+        return self._interact_value('use %s\r\n' % name, ['USING'.encode('utf-8')])
 
     def watching(self):
         """Return a list of all tubes being watched."""
-        return self._interact_yaml('list-tubes-watched\r\n', ['OK'])
+        return self._interact_yaml('list-tubes-watched\r\n', ['OK'.encode('utf-8')])
 
     def watch(self, name):
         """Watch a given tube."""
-        return int(self._interact_value('watch %s\r\n' % name, ['WATCHING']))
+        return int(self._interact_value('watch %s\r\n' % name, ['WATCHING'.encode('utf-8')]))
 
     def ignore(self, name):
         """Stop watching a given tube."""
         try:
             return int(self._interact_value('ignore %s\r\n' % name,
-                                            ['WATCHING'],
-                                            ['NOT_IGNORED']))
+                                            ['WATCHING'.encode('utf-8')],
+                                            ['NOT_IGNORED'.encode('utf-8')]))
         except CommandFailed:
             # Tried to ignore the only tube in the watchlist, which failed.
             return 0
 
     def stats(self):
         """Return a dict of beanstalkd statistics."""
-        return self._interact_yaml('stats\r\n', ['OK'])
+        return self._interact_yaml('stats\r\n', ['OK'.encode('utf-8')])
 
     def stats_tube(self, name):
         """Return a dict of stats about a given tube."""
         return self._interact_yaml('stats-tube %s\r\n' % name,
-                                   ['OK'],
-                                   ['NOT_FOUND'])
+                                   ['OK'.encode('utf-8')],
+                                   ['NOT_FOUND'.encode('utf-8')])
 
     def pause_tube(self, name, delay):
         """Pause a tube for a given delay time, in seconds."""
         self._interact('pause-tube %s %d\r\n' % (name, delay),
-                       ['PAUSED'],
-                       ['NOT_FOUND'])
+                       ['PAUSED'.encode('utf-8')],
+                       ['NOT_FOUND'.encode('utf-8')])
 
     # -- job interactors --
 
     def delete(self, jid):
         """Delete a job, by job id."""
-        self._interact('delete %d\r\n' % jid, ['DELETED'], ['NOT_FOUND'])
+        self._interact('delete %d\r\n' % jid, ['DELETED'.encode('utf-8')], ['NOT_FOUND'.encode('utf-8')])
 
     def release(self, jid, priority=DEFAULT_PRIORITY, delay=0):
         """Release a reserved job back into the ready queue."""
         self._interact('release %d %d %d\r\n' % (jid, priority, delay),
-                       ['RELEASED', 'BURIED'],
-                       ['NOT_FOUND'])
+                       ['RELEASED'.encode('utf-8'), 'BURIED'.encode('utf-8')],
+                       ['NOT_FOUND'.encode('utf-8')])
 
     def bury(self, jid, priority=DEFAULT_PRIORITY):
         """Bury a job, by job id."""
         self._interact('bury %d %d\r\n' % (jid, priority),
-                       ['BURIED'],
-                       ['NOT_FOUND'])
+                       ['BURIED'.encode('utf-8')],
+                       ['NOT_FOUND'.encode('utf-8')])
 
     def touch(self, jid):
         """Touch a job, by job id, requesting more time to work on a reserved
         job before it expires."""
-        self._interact('touch %d\r\n' % jid, ['TOUCHED'], ['NOT_FOUND'])
+        self._interact('touch %d\r\n' % jid, ['TOUCHED'.encode('utf-8')], ['NOT_FOUND'.encode('utf-8')])
 
     def stats_job(self, jid):
         """Return a dict of stats about a job, by job id."""
         return self._interact_yaml('stats-job %d\r\n' % jid,
-                                   ['OK'],
-                                   ['NOT_FOUND'])
+                                   ['OK'.encode('utf-8')],
+                                   ['NOT_FOUND'.encode('utf-8')])
 
 
 class Job(object):
@@ -274,7 +279,7 @@ class Job(object):
     def _priority(self):
         stats = self.stats()
         if isinstance(stats, dict):
-            return stats['pri']
+            return stats['pri'.encode('utf-8')]
         return DEFAULT_PRIORITY
 
     # -- public interface --
