@@ -7,9 +7,9 @@ from beanstalkc import __version__ as src_version
 PKG_VERSION = os.environ.get('BEANSTALKC_PKG_VERSION', src_version)
 
 setup(
-    name='beanstalkc',
+    name='beanstalkc3',
     version=PKG_VERSION,
-    py_modules=['beanstalkc'],
+    py_modules=['beanstalkc3'],
 
     author='Andreas Bolka',
     author_email='a@bolka.at',
