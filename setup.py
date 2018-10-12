@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os
 from setuptools import setup
-
+import time
 from beanstalkc import __version__ as src_version
 
 PKG_VERSION = os.environ.get('BEANSTALKC_PKG_VERSION', src_version)
